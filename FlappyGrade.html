@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flappy Grade! - Leaderboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        body { 
+            text-align: center; 
+            background: #e0f7fa; 
+            color: #2c3e50; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0;
+            padding: 10px;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            max-width: 400px;
+            margin: 0 auto 10px;
+        }
+        .ui-btn {
+            background: white;
+            border: 2px solid #006400;
+            color: #006400;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+        .ui-btn:active { transform: scale(0.95); }
+
+        canvas { 
+            background: #87CEEB; 
+            display: block; 
+            margin: 0 auto; 
+            border: 5px solid #fff; 
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            max-width: 100%;
+            max-height: 60vh;
+            cursor: pointer;
+        }
+        h1 { margin: 5px 0; color: #006400; text-shadow: 1px 1px 0px white; font-size: 24px; }
+        .info { font-size: 1rem; margin-bottom: 5px; font-weight: bold; }
+
+        /* New Control Button Styling */
+        .control-container {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+        }
+        .jump-btn {
+            background: #006400;
+            color: white;
+            width: 80%;
+            max-width: 300px;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 4px #004d00;
+            cursor: pointer;
+        }
+        .jump-btn:active {
+            box-shadow: 0 2px #004d00;
+            transform: translateY(2px);
+        }
+
+        #leaderboardModal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .leaderboard-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            width: 85%;
+            max-width: 320px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            color: #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #scoreContainer {
+            overflow-y: auto;
+            flex-grow: 1;
+            margin-bottom: 10px;
+            padding-right: 5px;
+        }
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .score-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+
+    <div class="game-header">
+        <a href="index.html" class="ui-btn">
+            <span class="material-symbols-outlined">arrow_back</span> Hub
+        </a>
+        <button class="ui-btn" onclick="window.showLeaderboard()">
+            <span class="material-symbols-outlined">leaderboard</span> Rankings
+        </button>
+    </div>
+
+    <h1>Flappy Grade!</h1>
+    <div class="info">Jump to pass!!!</div>
+    
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+
+    <div class="control-container">
+        <button id="tapBtn" class="jump-btn">TAP</button>
+    </div>
+
+    <div id="leaderboardModal">
+        <div class="leaderboard-card">
+            <h2 style="color: #006400; margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span class="material-symbols-outlined">emoji_events</span> CAMPUS RANKINGS
+            </h2>
+            <div id="scoreContainer">Loading...</div>
+            <button class="ui-btn" style="margin-top: 10px; width: 100%; justify-content: center; background: #006400; color: white;" onclick="document.getElementById('leaderboardModal').style.display='none'">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCmPGWo32eP1r1kS1GF4p3bZvzdC4HkyUQ",
+            authDomain: "mysundayproject-50d65.firebaseapp.com",
+            projectId: "mysundayproject-50d65",
+            storageBucket: "mysundayproject-50d65.firebasestorage.app",
+            messagingSenderId: "212383066252",
+            appId: "1:212383066252:web:86cb012a641ca0039db3a9"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let studentCodename = "Anonymous";
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists()) {
+                    studentCodename = userDoc.data().codename || user.displayName || "Student";
+                } else {
+                    studentCodename = user.displayName || "Student";
+                }
+            }
+        });
+
+        window.recordScore = async (finalGrade) => {
+            if (!auth.currentUser) return;
+            try {
+                await addDoc(collection(db, "flappyGradeScores"), {
+                    username: studentCodename,
+                    grade: parseFloat(finalGrade),
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) { console.error("Error saving score:", e); }
+        };
+
+        window.showLeaderboard = async () => {
+            const modal = document.getElementById('leaderboardModal');
+            const container = document.getElementById('scoreContainer');
+            modal.style.display = 'flex';
+            container.innerHTML = "Fetching rankings...";
+
+            try {
+                const q = query(collection(db, "flappyGradeScores"), orderBy("grade", "asc"), limit(100));
+                const snap = await getDocs(q);
+                container.innerHTML = "";
+                if (snap.empty) { container.innerHTML = "No high scores yet!"; return; }
+                
+                let rank = 1;
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}.`;
+                    container.innerHTML += `
+                        <div class="score-item">
+                            <span>${medal} ${data.username}</span>
+                            <b style="color: #006400;">${data.grade.toFixed(2)}</b>
+                        </div>`;
+                    rank++;
+                });
+            } catch (e) { 
+                console.error(e);
+                container.innerHTML = "Error loading scores."; 
+            }
+        };
+    </script>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'jump') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'score') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'die') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            } else if (type === 'pencil') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'teleport') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            }
+        }
+
+        let birdY = 250;
+        let birdX = 60;
+        let velocity = 0;
+        let gravity = 0.22;
+        let jump = -4.8;
+        let gameOver = false;
+        let gameStarted = false; // NEW FLAG
+        let scoreSubmitted = false;
+        
+        const grades = ["5.00", "4.00", "3.00", "2.75", "2.50", "2.25", "2.00", "1.75", "1.50", "1.25", "1.00"];
+        
+        let gradeIndex = 0;
+        let pipes = [];
+        let pipeWidth = 60;
+        let pipeGap = 160;
+        let basePipeSpeed = 2.2;
+        let currentSpeedMultiplier = 1;
+
+        let pencils = [];
+        let pencilWidth = 50;
+        let pencilHeight = 10;
+        let basePencilSpeed = 4.5;
+
+        let spaceships = [];
+        let shipWidth = 80;
+        let shipHeight = 40;
+
+        let clouds = [{x: 50, y: 60, speed: 0.2, scale: 0.8}, {x: 220, y: 140, speed: 0.3, scale: 1.1}, {x: 380, y: 40, speed: 0.15, scale: 0.7}, {x: 150, y: 250, speed: 0.25, scale: 0.9}];
+
+        function resetGame() {
+            birdY = 250;
+            velocity = 0;
+            gradeIndex = 0;
+            pipes = [];
+            pencils = [];
+            spaceships = [];
+            currentSpeedMultiplier = 1;
+            gameOver = false;
+            gameStarted = false; // Go back to start screen
+            scoreSubmitted = false;
+        }
+
+        function handleAction(e) {
+            if (e) e.preventDefault();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            if (!gameStarted) {
+                gameStarted = true;
+            } else if (gameOver) {
+                resetGame();
+            } else {
+                velocity = jump;
+                playSound('jump');
+            }
+        }
+
+        function createPipe() {
+            let pipeTopHeight = Math.random() * (canvas.height - pipeGap - 120) + 60;
+            pipes.push({ 
+                x: canvas.width, 
+                top: pipeTopHeight, 
+                passed: false, 
+                dy: Math.random() > 0.5 ? 1 : -1 
+            });
+        }
+
+        function createPencil() {
+            let pencilY = Math.random() * (canvas.height - 50) + 25;
+            pencils.push({ x: canvas.width + 100, y: pencilY });
+            playSound('pencil');
+        }
+
+        function createSpaceship() {
+            let shipY = Math.random() * (canvas.height - 100) + 50;
+            spaceships.push({ 
+                x: canvas.width + 150, 
+                y: shipY, 
+                teleportTimer: 0 
+            });
+        }
+
+        function drawCloud(c) {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 20 * c.scale, 0, Math.PI * 2);
+            ctx.arc(c.x + 15 * c.scale, c.y - 10 * c.scale, 20 * c.scale, 0, Math.PI * 2);
+            ctx.arc(c.x + 30 * c.scale, c.y, 20 * c.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function update() {
+            if (!gameStarted || gameOver) return;
+            velocity += gravity;
+            birdY += velocity;
+
+            let currentGradeVal = parseFloat(grades[gradeIndex]);
+
+            if (currentGradeVal === 2.25) {
+                currentSpeedMultiplier = 2;
+            } else if (currentGradeVal <= 2.00) {
+                currentSpeedMultiplier = 1;
+            }
+
+            clouds.forEach(c => {
+                c.x -= (c.speed * currentSpeedMultiplier);
+                if (c.x < -60) c.x = canvas.width + 60;
+            });
+
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 240) {
+                createPipe();
+            }
+
+            let shouldSpawnPencil = false;
+            if (currentGradeVal <= 4.00 && currentGradeVal > 2.75) shouldSpawnPencil = true;
+            if (currentGradeVal <= 1.75) shouldSpawnPencil = true;
+
+            if (shouldSpawnPencil && Math.random() < 0.02) {
+                createPencil(); 
+            }
+
+            if (currentGradeVal <= 1.75 && Math.random() < 0.008) {
+                createSpaceship();
+            }
+
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                pipes[i].x -= (basePipeSpeed * currentSpeedMultiplier);
+
+                let shouldPipeMove = false;
+                if (currentGradeVal <= 3.00 && currentGradeVal > 2.50) shouldPipeMove = true;
+                if (currentGradeVal <= 1.75) shouldPipeMove = true;
+
+                if (shouldPipeMove) {
+                    pipes[i].top += pipes[i].dy * 1.5;
+                    if (pipes[i].top < 40 || pipes[i].top > canvas.height - pipeGap - 40) {
+                        pipes[i].dy *= -1;
+                    }
+                }
+
+                if (birdX + 30 > pipes[i].x && birdX < pipes[i].x + pipeWidth) {
+                    if (birdY - 20 < pipes[i].top || birdY + 10 > pipes[i].top + pipeGap) {
+                        endGame();
+                    }
+                }
+                
+                if (pipes[i].x + pipeWidth < birdX && !pipes[i].passed) {
+                    pipes[i].passed = true;
+                    playSound('score');
+                    if (gradeIndex < grades.length - 1) {
+                        gradeIndex++;
+                    } else {
+                        endWin(); 
+                    }
+                }
+                if (pipes[i].x + pipeWidth < 0) pipes.splice(i, 1);
+            }
+
+            for (let i = pencils.length - 1; i >= 0; i--) {
+                pencils[i].x -= (basePencilSpeed * currentSpeedMultiplier);
+                if (birdX < pencils[i].x + pencilWidth &&
+                    birdX + 40 > pencils[i].x &&
+                    birdY - 20 < pencils[i].y + pencilHeight &&
+                    birdY + 10 > pencils[i].y) {
+                    endGame();
+                }
+                if (pencils[i].x + pencilWidth < 0) pencils.splice(i, 1);
+            }
+
+            for (let i = spaceships.length - 1; i >= 0; i--) {
+                let s = spaceships[i];
+                s.x -= 3;
+                s.teleportTimer++;
+
+                if (s.teleportTimer > 60 + Math.random() * 40) {
+                    s.y = Math.random() * (canvas.height - 100) + 50;
+                    s.teleportTimer = 0;
+                    playSound('teleport');
+                }
+
+                if (birdX < s.x + shipWidth &&
+                    birdX + 40 > s.x &&
+                    birdY - 20 < s.y + shipHeight &&
+                    birdY + 10 > s.y) {
+                    endGame();
+                }
+                if (s.x + shipWidth < 0) spaceships.splice(i, 1);
+            }
+
+            if (birdY > canvas.height || birdY < 0) endGame();
+        }
+
+        function draw() {
+            ctx.fillStyle = "#87CEEB";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            clouds.forEach(c => drawCloud(c));
+
+            pipes.forEach(p => {
+                ctx.fillStyle = "#27ae60";
+                ctx.fillRect(p.x, 0, pipeWidth, p.top);
+                ctx.fillRect(p.x, p.top + pipeGap, pipeWidth, canvas.height);
+                ctx.fillStyle = "#1e8449";
+                ctx.fillRect(p.x - 5, p.top - 20, pipeWidth + 10, 20);
+                ctx.fillRect(p.x - 5, p.top + pipeGap, pipeWidth + 10, 20);
+            });
+
+            pencils.forEach(pen => {
+                ctx.fillStyle = "#f1c40f"; 
+                ctx.fillRect(pen.x, pen.y, pencilWidth - 10, pencilHeight);
+                ctx.fillStyle = "#e84393"; 
+                ctx.fillRect(pen.x + pencilWidth - 10, pen.y, 10, pencilHeight);
+                ctx.fillStyle = "#333"; 
+                ctx.beginPath();
+                ctx.moveTo(pen.x, pen.y);
+                ctx.lineTo(pen.x - 10, pen.y + (pencilHeight/2));
+                ctx.lineTo(pen.x, pen.y + pencilHeight);
+                ctx.fill();
+            });
+
+            spaceships.forEach(s => {
+                ctx.fillStyle = "#7f8c8d"; 
+                ctx.beginPath();
+                ctx.ellipse(s.x + shipWidth/2, s.y + shipHeight/2, shipWidth/2, shipHeight/2, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = "#3498db";
+                ctx.beginPath();
+                ctx.arc(s.x + shipWidth/2, s.y + 15, 15, 0, Math.PI, true);
+                ctx.fill();
+                ctx.fillStyle = "yellow";
+                for(let l=0; l<3; l++) {
+                    ctx.beginPath();
+                    ctx.arc(s.x + 20 + (l*20), s.y + 25, 3, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            });
+
+            ctx.fillStyle = "#006400";
+            ctx.font = "bold 32px 'Arial Black', sans-serif";
+            ctx.fillText(grades[gradeIndex], birdX, birdY);
+
+            // START SCREEN OVERLAY
+            if (!gameStarted) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                ctx.textAlign = "center";
+                ctx.font = "bold 28px Arial";
+                ctx.fillText("READY TO PASS?", canvas.width/2, canvas.height/2 - 20);
+                ctx.font = "20px Arial";
+                ctx.fillText("Tap to Start Game", canvas.width/2, canvas.height/2 + 20);
+                ctx.textAlign = "start";
+            }
+
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                ctx.textAlign = "center";
+                ctx.font = "bold 36px Arial";
+                
+                let finalGrade = parseFloat(grades[gradeIndex]);
+                if (gradeIndex === grades.length - 1 && !pipes.some(p => p.x + pipeWidth > birdX)) {
+                    ctx.fillText("GRADUATED!", canvas.width/2, canvas.height/2);
+                } else {
+                    ctx.fillText(finalGrade <= 3.0 ? "YOU PASSED!" : "FAILED", canvas.width/2, canvas.height/2);
+                }
+                
+                ctx.font = "20px Arial";
+                ctx.fillText("Grade: " + grades[gradeIndex], canvas.width/2, canvas.height/2 + 50);
+                ctx.fillText("Tap to Retake", canvas.width/2, canvas.height/2 + 90);
+                ctx.textAlign = "start";
+            }
+        }
+
+        function endWin() {
+            if(gameOver) return;
+            gameOver = true;
+            if(!scoreSubmitted) {
+                if(window.recordScore) window.recordScore(grades[gradeIndex]);
+                scoreSubmitted = true;
+            }
+        }
+
+        function endGame() { 
+            if(gameOver) return;
+            gameOver = true; 
+            playSound('die');
+            if(!scoreSubmitted) {
+                if(window.recordScore) window.recordScore(grades[gradeIndex]);
+                scoreSubmitted = true;
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('keydown', (e) => { if (e.code === 'Space') handleAction(e); });
+        canvas.addEventListener('mousedown', (e) => { handleAction(e); });
+        canvas.addEventListener('touchstart', (e) => { handleAction(e); }, {passive: false});
+        
+        // Connect the new HTML button
+        document.getElementById('tapBtn').addEventListener('mousedown', (e) => { handleAction(e); });
+        document.getElementById('tapBtn').addEventListener('touchstart', (e) => { handleAction(e); }, {passive: false});
+
+        loop();
+    </script>
+</body>
+</html>

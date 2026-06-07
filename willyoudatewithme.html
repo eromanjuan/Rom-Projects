@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Special Question for You</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #ffe5ec, #ffc2d1);
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            max-width: 500px;
+            width: 100%;
+            transition: all 0.5s ease;
+        }
+
+        .gif-container img {
+            max-width: 150px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #ff4d6d;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            line-height: 1.2;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            min-height: 60px;
+            position: relative;
+        }
+
+        button {
+            padding: 15px 35px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        #yes-btn {
+            background-color: #ff4d6d;
+            color: white;
+        }
+
+        #yes-btn:hover {
+            background-color: #ff758f;
+            transform: scale(1.1);
+        }
+
+        #no-btn {
+            background-color: #a3a3a3;
+            color: white;
+            position: absolute; /* Allows JS to move it freely */
+            left: 55%; /* Initial alignment */
+        }
+
+        /* Celebration Screen Styles */
+        .celebrate h1 {
+            color: #c9184a;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Responsive design adjustments */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2rem;
+            }
+            button {
+                padding: 12px 28px;
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="main-container">
+        <div class="gif-container">
+            <img id="display-image" src="https://media.tenor.com/Ejtftpv2f40AAAAM/excited-love.gif.gif" alt="Cute bear asking">
+        </div>
+        <h1 id="question">Will you go on a date with me?</h1>
+        
+        <div class="btn-group" id="btn-group">
+            <button id="yes-btn">Yes</button>
+            <button id="no-btn">No</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        const noBtn = document.getElementById('no-btn');
+        const yesBtn = document.getElementById('yes-btn');
+        const container = document.getElementById('main-container');
+        const question = document.getElementById('question');
+        const image = document.getElementById('display-image');
+        const btnGroup = document.getElementById('btn-group');
+
+        // Function to move the "No" button randomly within the screen bounds
+        function moveNoButton() {
+            // Switch button to fixed positioning once interacted with so it can fly anywhere on screen
+            noBtn.style.position = 'fixed';
+            
+            // Calculate safe boundaries so the button stays visible on screen
+            const padding = 20;
+            const maxX = window.innerWidth - noBtn.offsetWidth - padding;
+            const maxY = window.innerHeight - noBtn.offsetHeight - padding;
+
+            // Generate random coordinates
+            const randomX = Math.max(padding, Math.floor(Math.random() * maxX));
+            const randomY = Math.max(padding, Math.floor(Math.random() * maxY));
+
+            noBtn.style.left = randomX + 'px';
+            noBtn.style.top = randomY + 'px';
+        }
+
+        // Evade mouse hover (Desktop)
+        noBtn.addEventListener('mouseover', moveNoButton);
+        noBtn.addEventListener('mouseenter', moveNoButton);
+
+        // Evade touch/tap (Mobile)
+        noBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevents accidental clicking/focusing
+            moveNoButton();
+        });
+
+        // What happens when she clicks YES!
+        yesBtn.addEventListener('click', () => {
+            // Update container styles for celebration
+            container.classList.add('celebrate');
+            
+            // Change the text and image to a celebratory one
+            question.innerHTML = "Yay! Can't wait! 🥰❤️";
+            image.src = "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbW9pM3R5Ymd3OXB4ZjNreXNxb3NndnI3M2g0Y2ptYm9pM2pxYWhpMCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/26FLdmIp6wJr91JAI/giphy.gif";
+            
+            // Hide the buttons completely
+            btnGroup.style.display = 'none';
+
+            // Trigger Confetti Burst
+            duration = 5 * 1000;
+            animationEnd = Date.now() + duration;
+            defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+            function randomInRange(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            const interval = setInterval(function() {
+                const timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                const particleCount = 50 * (timeLeft / duration);
+                // confetti explosions coming from random spots
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College GWA Calculator</title>
+    <link rel="stylesheet" href="gwa/style.css">
+    <link rel="icon" type="image/png" href="images/calculator-icon-1.png">
+    <link rel="icon" type="image/png" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=calculate" />
+</head>
+<body>
+    <div class="container">
+
+    <div><a href="index.html"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"/></svg></a></div>
+        <h2>GWA & Dean's List Calculator</h2>
+        <p class="subtitle">Based on 1.00 - 5.00 Grading System</p>
+
+        <div id="calculator-box">
+            <table id="gradeTable">
+                <thead>
+                    <tr>
+                        <th>Subject (Optional)</th>
+                        <th>Grade (1.0 - 5.0)</th>
+                        <th>Units</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td><input type="text" placeholder="e.g. Math 101"></td>
+                        <td><input type="number" class="grade" step="0.01" min="1.0" max="5.0" placeholder="1.25"></td>
+                        <td><input type="number" class="units" step="0.1" min="1" placeholder="3"></td>
+                        <td><button class="remove-btn" onclick="removeRow(this)">×</button></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="actions">
+                <button id="addRow" onclick="addRow()">+ Add Subject</button>
+                <button id="calculateBtn" onclick="calculateGWA()">Calculate Result</button>
+            </div>
+
+            <div id="result-area" class="hidden">
+                <div class="gwa-display">
+                    <span>Your GWA:</span>
+                    <h1 id="gwaScore">0.00</h1>
+                </div>
+                <div id="statusBadge" class="badge"></div>
+                <p id="statusMessage"></p>
+            </div>
+        </div>
+    </div>
+    <script src="gwa/script.js"></script>
+</body>
+</html>
